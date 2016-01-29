@@ -1,6 +1,5 @@
 #include <Messenger.h>
 
-//long serialin;
 double serialin;
 float duration;
 uint16_t prescaler;
@@ -58,7 +57,6 @@ int set_prescaler(int value)
 void messageCompleted() 
 {
   
-  //serialin = message.readLong();
   serialin = message.readDouble();
   
   if(serialin > 0) direction = 1;
@@ -104,7 +102,7 @@ void messageCompleted()
     Serial.print(prescaler);
     Serial.print(", ");
 
-    delay(100);
+    //delay(100);
     OSP_SET_AND_FIRE(cycles);
     Serial.print("Pulsing for ");
     Serial.print(duration);
