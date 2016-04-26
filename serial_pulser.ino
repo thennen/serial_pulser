@@ -1,7 +1,9 @@
 #include <Messenger.h>
+#include <math.h>
 
 double serialin;
 float duration;
+float tens;
 uint16_t prescaler;
 uint32_t pulse_length;
 uint16_t cycles;
@@ -16,9 +18,9 @@ Messenger message = Messenger();
 void OSP_SET_AND_FIRE(uint16_t cycles)
 {
   uint16_t m = 0xffff - (cycles - 1);
-  Serial.print("m = ");
-  Serial.print(m);
-  Serial.print(", ");
+  //Serial.print("m = ");
+  //Serial.print(m);
+  //Serial.print(", ");
   OCR1B = m;
   TCNT1 = m-2;
 }
@@ -58,9 +60,33 @@ void messageCompleted()
 {
   
   serialin = message.readDouble();
+
   
-  if(serialin > 0) direction = 1;
-  else direction=0;
+  if(serialin > 0)    // Want to pulse in + direction
+  {
+    if(!direction)
+    {
+      // Change direction
+      digitalWrite(12, LOW);
+      digitalWrite(13, HIGH);
+      direction = 1;
+    }
+  }
+  else               // Want to pulse in - direction
+  {
+    if(direction)
+    {
+      // Change direction
+      digitalWrite(13, LOW);
+      digitalWrite(12, HIGH);
+      direction = 0;
+    }
+  }
+
+  // Replace this with timer
+  digitalWrite(11, HIGH);
+  delay(100);
+  digitalWrite(11, LOW);
 
   // pulse length in clock cycles
   pulse_length = uint32_t(abs(serialin * 1000000000) / 62.5);
@@ -94,20 +120,38 @@ void messageCompleted()
       prescaler = set_prescaler(1);
     }
     cycles = pulse_length / prescaler;
-    duration = 62.5 * cycles * prescaler;
-    Serial.print("cycles =");
-    Serial.print(cycles);
-    Serial.print(", ");
-    Serial.print("prescaler =");
-    Serial.print(prescaler);
-    Serial.print(", ");
-
-    //delay(100);
-    OSP_SET_AND_FIRE(cycles);
-    Serial.print("Pulsing for ");
-    Serial.print(duration);
-    Serial.print(" ns in direction ");
+    duration = 62.5 * cycles * prescaler; // Duration in ns
+    tens = log10(duration);
+    Serial.print("Pulsing ");
+    if(tens >= 9)
+    {
+      Serial.print(duration / 1000000000);
+      Serial.print(" s");
+    }
+    else if(tens >= 6)
+    {
+      Serial.print(duration / 1000000);
+      Serial.print(" ms");
+    }
+    else if(tens >= 3)
+    {
+      Serial.print(duration / 1000);
+      Serial.print(" us");
+    }
+    else
+    {
+      Serial.print(duration);
+      Serial.print(" ns");
+    }
+    Serial.print(" in direction ");
     Serial.print(direction);
+    Serial.print(", ");
+    Serial.print(cycles);
+    Serial.print(" cycles, prescaler ");
+    Serial.print(prescaler);
+
+    OSP_SET_AND_FIRE(cycles);
+
   }
   Serial.println(); // Terminate message
 }
@@ -124,6 +168,11 @@ void setup()
   //TCCR1B |= _BV(CS10);                                        // Start counter
   
   pinMode(10, OUTPUT);    // Set pin to output (OC1B = GPIO port PB2 = Arduino Digital Pin 10)
+  pinMode(11, OUTPUT);    // LED
+  pinMode(12, OUTPUT);
+  pinMode(13, OUTPUT);
+  digitalWrite(12, LOW);
+  digitalWrite(13, HIGH);
 
   Serial.begin(9600);
   
